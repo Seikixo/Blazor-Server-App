@@ -1,0 +1,75 @@
+﻿@using System.Collections.ObjectModel
+
+@inject IJSRuntime JSRuntime;
+
+@page "/objectlist"
+<h3>ObjectList</h3>
+
+<MudGrid>
+    <MudItem>
+        <MudTextField T="string" Label="Name" @bind-Value="PersonFormData.Name"></MudTextField>
+        <MudTextField T="string" Label="Address" @bind-Value="PersonFormData.Address"></MudTextField>
+    </MudItem>
+    <MudItem>
+        <MudButton Variant="Variant.Filled" OnClick="() => SaveNewPersonProc(PersonFormData)">SAVE</MudButton>
+    </MudItem>
+</MudGrid>
+
+<h3>List</h3>
+<MudGrid>
+    <MudDataGrid T="PersonDTO" Items="Persons">
+        <Columns>
+            <PropertyColumn Property="x => x.Name"></PropertyColumn>
+            <TemplateColumn CellClass="d-flex justify-end">
+                <CellTemplate>
+                    <MudStack Row>
+                        <MudButton Size="@Size.Small" Variant="@Variant.Outlined" Color="@Color.Primary" OnClick="() => DeletePersonProc(context.Item)">Remove</MudButton>
+                    </MudStack>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+</MudGrid>
+
+@code {
+    public PersonDTO PersonFormData { get; set; } = new PersonDTO();
+    public ObservableCollection<PersonDTO> Persons { get; set; } = new ObservableCollection<PersonDTO>();
+    public Lazy<IJSObjectReference> StorageModule { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(firstRender){
+            var dotnetRef = DotNetObjectReference.Create(this);
+            // load the JS file as js runtime module
+            StorageModule = new(await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./storage.js"));
+            // create a dotnet reference to invoke c# functions within the JS file
+            await StorageModule.Value.InvokeVoidAsync("initialize", dotnetRef);
+        }
+    }
+
+    private void SaveNewPersonProc(PersonDTO person){
+        StorageModule.Value.InvokeVoidAsync("insertObject", person);
+    }
+
+    private void DeletePersonProc(PersonDTO person)
+    {
+        StorageModule.Value.InvokeVoidAsync("removeObject", person);
+    }
+
+    [JSInvokable]
+    public void InsertToCSharpList(PersonDTO person)
+    {
+        Persons.Add(person);
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void RemoveFromCSharpList(PersonDTO person)
+    {
+        var existingPerson = Persons.FirstOrDefault( x => x.Name == person.Name);
+        if(existingPerson != null){
+            Persons.Remove(existingPerson);
+            StateHasChanged();
+        }
+    }
+}
