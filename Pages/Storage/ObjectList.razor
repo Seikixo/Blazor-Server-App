@@ -32,39 +32,39 @@
 </MudGrid>
 
 @code {
-    public PersonDTO PersonFormData { get; set; } = new PersonDTO();
-    public ObservableCollection<PersonDTO> Persons { get; set; } = new ObservableCollection<PersonDTO>();
-    public Lazy<IJSObjectReference> StorageModule { get; set; }
+    public PersonDTO PersonFormData { get; set; } = new PersonDTO(); //Represents data structure for person
+    public ObservableCollection<PersonDTO> Persons { get; set; } = new ObservableCollection<PersonDTO>(); //A c# collection that holds the list of person
+    public Lazy<IJSObjectReference> StorageModule { get; set; } //A lazy object reference to the JS file enabling interaction between JS and C#
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if(firstRender){
-            var dotnetRef = DotNetObjectReference.Create(this);
-            // load the JS file as js runtime module
-            StorageModule = new(await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./storage.js"));
-            // create a dotnet reference to invoke c# functions within the JS file
-            await StorageModule.Value.InvokeVoidAsync("initialize", dotnetRef);
+            var dotnetRef = DotNetObjectReference.Create(this); //Creates a reference to the Blazor component so JavaScript can call its C# methods.
+           
+            StorageModule = new(await JSRuntime.InvokeAsync<IJSObjectReference>("import", "./storage.js"));  // load the JS file as js runtime module
+            
+            await StorageModule.Value.InvokeVoidAsync("initialize", dotnetRef); // create a dotnet reference to invoke c# functions within the JS file
         }
     }
 
     private void SaveNewPersonProc(PersonDTO person){
-        StorageModule.Value.InvokeVoidAsync("insertObject", person);
+        StorageModule.Value.InvokeVoidAsync("insertObject", person); //invoke the insertObject function in the JS file
     }
 
     private void DeletePersonProc(PersonDTO person)
     {
-        StorageModule.Value.InvokeVoidAsync("removeObject", person);
+        StorageModule.Value.InvokeVoidAsync("removeObject", person); //invoke the removeObject function in the JS file
     }
 
-    [JSInvokable]
-    public void InsertToCSharpList(PersonDTO person)
+    [JSInvokable] //This attribute is used to make the method accessible from JS
+    public void InsertToCSharpList(PersonDTO person) //This method adds a person to Persons list when JS invokes it
     {
         Persons.Add(person);
         StateHasChanged();
     }
 
-    [JSInvokable]
-    public void RemoveFromCSharpList(PersonDTO person)
+    [JSInvokable] //This attribute is used to make the method accessible from JS
+    public void RemoveFromCSharpList(PersonDTO person) //This method removes a person from Persons list based on matching Name when JS invokes it
     {
         var existingPerson = Persons.FirstOrDefault( x => x.Name == person.Name);
         if(existingPerson != null){
